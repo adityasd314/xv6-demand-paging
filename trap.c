@@ -77,7 +77,11 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
-
+  case T_PGFLT:
+    cprintf("Hello A page fault just occured !\n");
+    cprintf("Ip: %x\nPRocess Name: %s\nProcess Id: %d\n CR2 Reg 0x%x", tf->eip, myproc()->name, myproc()->pid, rcr2());
+        myproc()->killed = 1;
+    break;
   //PAGEBREAK: 13
   default:
     if(myproc() == 0 || (tf->cs&3) == 0){
