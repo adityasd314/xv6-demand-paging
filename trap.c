@@ -80,7 +80,10 @@ trap(struct trapframe *tf)
   case T_PGFLT:
     cprintf("Hello A page fault just occured !\n");
     cprintf("Ip: %x\nPRocess Name: %s\nProcess Id: %d\n CR2 Reg 0x%x", tf->eip, myproc()->name, myproc()->pid, rcr2());
-        myproc()->killed = 1;
+    if(load_demand_page(rcr2()) != 0){
+      panic("loading page failed\n");
+    }
+    lapiceoi();
     break;
   //PAGEBREAK: 13
   default:
