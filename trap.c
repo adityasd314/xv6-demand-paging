@@ -46,6 +46,7 @@ trap(struct trapframe *tf)
     return;
   }
 
+  if(tf->trapno != 32 && tf->trapno != 36) cprintf("%d\n", tf->trapno);
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){
@@ -80,6 +81,11 @@ trap(struct trapframe *tf)
   case T_PGFLT:
     cprintf("Hello A page fault just occured !\n");
     cprintf("Ip: %x\nPRocess Name: %s\nProcess Id: %d\n CR2 Reg 0x%x", tf->eip, myproc()->name, myproc()->pid, rcr2());
+    if(rcr2() >= KERNBASE || rcr2() >= myproc()->sz) {
+      cprintf("Page fault on invalid address: %x\n", rcr2());
+      myproc()->killed = 1;
+      return;
+    }
     if(load_demand_page(rcr2()) != 0){
       panic("loading page failed\n");
     }
