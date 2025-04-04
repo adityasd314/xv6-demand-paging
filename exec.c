@@ -12,7 +12,7 @@ exec(char *path, char **argv)
 {
   char *s, *last;
   int i, off;
-  uint argc, sz, sp, ustack[3+MAXARG+1];
+  uint argc, sz, sp, ustack[3+MAXARG+1], totalfilesz;
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
@@ -39,6 +39,7 @@ exec(char *path, char **argv)
     goto bad;
 
   sz = 0;
+  totalfilesz = 0;
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
@@ -54,6 +55,7 @@ exec(char *path, char **argv)
       goto bad;
     if(newloaduvm(pgdir, (char*)ph.vaddr, ip, ph.off, ph.filesz) < 0)
       goto bad;
+    totalfilesz += ph.filesz;
   }
   iunlockput(ip);
   end_op();
@@ -98,6 +100,9 @@ exec(char *path, char **argv)
   curproc->sz = sz;
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
+  curproc->maxpgs = (totalfilesz*MAXPAGES)/MAXFILESZ + 1;
+  if(curproc->maxpgs < MINPAGES) curproc->maxpgs = MINPAGES;
+  cprintf("pages: %d, filesz: %d\n", curproc->maxpgs, totalfilesz);
   switchuvm(curproc);
   freevm(oldpgdir);
   return 0;

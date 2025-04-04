@@ -44,6 +44,29 @@ load_demand_page(uint dppgaddr)
   // Round down to page boundary
   dppgaddr = PGROUNDDOWN(dppgaddr);
   
+  if(curproc->pgsallocated == curproc->maxpgs){
+    pte_t *pte;
+    uint a, pa;
+    pte = walkpgdir(curproc->pgdir, (char*)0, 0);
+    if(!pte)
+      a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE;
+    else if((*pte & PTE_P) != 0){
+      char* pa = PTE_ADDR(*pte);
+      if(pa == 0)
+        panic("kfree");
+      char *v = P2V(pa);
+      kfree(v);
+      *pte = 0;
+    }
+    else{
+      *pte = 0;
+    }
+  }
+  else{
+    curproc->pgsallocated++;
+    cprintf("pages allocated: %d\n", curproc->pgsallocated);
+  }
+
   // Allocate memory for the page
   mem = kalloc();
   if(mem == 0){

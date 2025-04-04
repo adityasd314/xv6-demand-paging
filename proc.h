@@ -1,3 +1,6 @@
+#define MAXPAGES 10
+#define MINPAGES 3
+#define MAXFILESZ 71680
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -49,6 +52,8 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  int pgsallocated;
+  int maxpgs;
 };
 
 // Process memory is laid out contiguously, low addresses first:
