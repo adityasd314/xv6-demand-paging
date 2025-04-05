@@ -71,13 +71,13 @@ struct segdesc {
 //  \--- PDX(va) --/ \--- PTX(va) --/
 
 // page directory index
-#define PDX(va)         (((uint)(va) >> PDXSHIFT) & 0x3FF)
+#define PDX(va)         (((uint)(va) >> PDXSHIFT) & 0x3FF) // Extracts the Page directory index bits from the Virtual address (gets index in the page directory table)
 
 // page table index
-#define PTX(va)         (((uint)(va) >> PTXSHIFT) & 0x3FF)
+#define PTX(va)         (((uint)(va) >> PTXSHIFT) & 0x3FF) // Extracts the Page table index bits from the Virtual address (gets index in the page table)
 
 // construct virtual address from indexes and offset
-#define PGADDR(d, t, o) ((uint)((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
+#define PGADDR(d, t, o) ((uint)((d) << PDXSHIFT | (t) << PTXSHIFT | (o))) // contructrs address from page directory index, page table index and offset
 
 // Page directory and page table constants.
 #define NPDENTRIES      1024    // # directory entries per page directory
@@ -97,8 +97,9 @@ struct segdesc {
 #define PTE_PS          0x080   // Page Size
 
 // Address in page table or page directory entry
-#define PTE_ADDR(pte)   ((uint)(pte) & ~0xFFF)
-#define PTE_FLAGS(pte)  ((uint)(pte) &  0xFFF)
+#define PTE_ADDR(pte)   ((uint)(pte) & ~0xFFF)// returns the physical address
+#define PTE_FLAGS(pte)  ((uint)(pte) &  0xFFF)// returns the permisssion
+#define PTE_GET_ACCESSED(pte) ((uint)(pte) & (1<<5)) // return the accessed bit
 
 #ifndef __ASSEMBLER__
 typedef uint pte_t;

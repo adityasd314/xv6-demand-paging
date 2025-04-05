@@ -88,7 +88,8 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->pgsallocated = 0;
+  p->lru_list.sz = 0;
+  p->lru_list.max_sz = LRU_MAX_SIZE;
 
   release(&ptable.lock);
 
@@ -112,6 +113,9 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+
+  
+
 
   return p;
 }
@@ -200,7 +204,6 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 

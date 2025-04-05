@@ -37,10 +37,11 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
   pde_t *pde;
   pte_t *pgtab;
-
-  pde = &pgdir[PDX(va)];
+  // pgdir points to the bottom of page dir
+  pde = &pgdir[PDX(va)]; 
   if(*pde & PTE_P){
-    pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
+    pgtab = (pte_t*)P2V(PTE_ADDR(*pde));// *pde denotes the actual PTE
+    // this code gets the Physical page number converts to virtual addre
   } else {
     if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)
       return 0;
@@ -51,7 +52,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
     // entries, if necessary.
     *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
   }
-  return &pgtab[PTX(va)];
+  return &pgtab[PTX(va)]; // returns pointer to the PTE
 }
 
 static int
@@ -79,6 +80,8 @@ newmappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
+// now we have memory allocated to us
+// we just need to make page table entries for the same
 int
 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 {
@@ -217,14 +220,15 @@ inituvm(pde_t *pgdir, char *init, uint sz)
 int
 newloaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 {
+  struct proc* curproc = myproc();
   uint i, pa, n;
   pte_t *pte;
 
   if((uint) addr % PGSIZE != 0)
-    panic("loaduvm: addr must be page aligned");
+    panic("newloaduvm: addr must be page aligned");
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, addr+i, 0)) == 0)
-      panic("loaduvm: address should exist");
+      panic("newloaduvm: address should exist");
     pa = PTE_ADDR(*pte);
     if(sz - i < PGSIZE)
       n = sz - i;
@@ -286,6 +290,7 @@ newallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       kfree(mem);
       return 0;
     }
+
   }
   return newsz;
 }

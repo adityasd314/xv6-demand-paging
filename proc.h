@@ -1,6 +1,7 @@
-#define MAXPAGES 10
-#define MINPAGES 3
 #define MAXFILESZ 71680
+#define LRU_MAX_SIZE 3
+#define LRU_MIN_SIZE 2
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -37,6 +38,12 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+struct lru_list {
+  uint max_sz;
+  uint sz;
+  pde_t* arr[LRU_MAX_SIZE];
+};
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
@@ -52,8 +59,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  int pgsallocated;
-  int maxpgs;
+  struct lru_list lru_list;    // LRU arr
 };
 
 // Process memory is laid out contiguously, low addresses first:
