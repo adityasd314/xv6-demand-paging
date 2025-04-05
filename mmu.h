@@ -100,6 +100,7 @@ struct segdesc {
 #define PTE_ADDR(pte)   ((uint)(pte) & ~0xFFF)// returns the physical address
 #define PTE_FLAGS(pte)  ((uint)(pte) &  0xFFF)// returns the permisssion
 #define PTE_GET_ACCESSED(pte) ((uint)(pte) & (1<<5)) // return the accessed bit
+#define PTE_RESET_ACCESSED(pte) ((uint)(pte) & ~(1<<5)) // return the accessed bit
 
 #ifndef __ASSEMBLER__
 typedef uint pte_t;

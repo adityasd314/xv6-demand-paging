@@ -5,7 +5,27 @@
 #include "proc.h"
 #include "elf.h"
 #include "memlayout.h"
-
+void print_pte()
+{
+  // prints the present pages
+  struct proc *curproc = myproc();
+  pte_t *pte = walkpgdir(curproc->pgdir, (void *)0, 0);
+  int count = 0;
+  uint p = 0;
+  cprintf("\n===================PRESeNT : ");
+  while (p < 1024)
+  {
+    if (*pte & PTE_P)
+    {
+      count++;
+      cprintf("%x A:%d ", pte, PTE_GET_ACCESSED(*pte));
+    }
+    p++;
+    pte = walkpgdir(curproc->pgdir, (void *)(p * 4096), 0);
+    ;
+  }
+  cprintf("\nCOUNT: %d\n", count);
+}
 int load_demand_page(uint dppgaddr)
 {
   struct proc *curproc = myproc();
@@ -49,8 +69,32 @@ int load_demand_page(uint dppgaddr)
   {
     // pte_t *pte;
     uint a, pa;
-    pte_t *pte = curproc->lru_list.arr[0];
-    cprintf("\nRemoving page table entry : %x\n", pte);
+    int found = -1;
+    uint addrFound = 0;
+    print_pte();
+    for (int i = 0; i < curproc->lru_list.sz; i++)
+    {
+
+      if (found == -1 && PTE_GET_ACCESSED(*curproc->lru_list.arr[i]) == 0)
+      {
+        found = i;
+        addrFound = curproc->lru_list.arr[i];
+      }
+      if (found != -1 && i + 1 < curproc->lru_list.sz)
+      {
+        curproc->lru_list.arr[i] = curproc->lru_list.arr[i + 1];
+      }
+      *curproc->lru_list.arr[i] = PTE_RESET_ACCESSED(*curproc->lru_list.arr[i]);
+    }
+    curproc->lru_list.sz--;
+
+    pte_t *pte = (found == -1) ? curproc->lru_list.arr[0] : addrFound;
+    if (found == -1)
+    {
+      for (int i = 0; i < curproc->lru_list.sz; i++)
+        curproc->lru_list.arr[i] = curproc->lru_list.arr[i + 1];
+    }
+    cprintf("\nFound %d Removing page table entry : %x\n", found, pte);
     if (!pte)
     {
       cprintf("Page not there !");
@@ -70,12 +114,13 @@ int load_demand_page(uint dppgaddr)
       {
         *pte = 0;
       }
-      curproc->lru_list.sz--;
-      cprintf("LIST : 0");
-      for(int i = 0;i < curproc->lru_list.sz;i++){
-        curproc->lru_list.arr[i] = curproc->lru_list.arr[i+1];
-        cprintf("%x A:%d ", curproc->lru_list.arr[i+1],PTE_GET_ACCESSED(curproc->lru_list.arr[i+1]));
-      }
+      // curproc->lru_list.sz--;
+      // cprintf("LIST : 0");
+      // for (int i = 0; i < curproc->lru_list.sz; i++)
+      // {
+      //   curproc->lru_list.arr[i] = curproc->lru_list.arr[i + 1];
+      //   cprintf("%x A:%d ", curproc->lru_list.arr[i + 1], PTE_GET_ACCESSED(curproc->lru_list.arr[i + 1]));
+      // }
     }
   }
   // else{
@@ -174,31 +219,27 @@ int load_demand_page(uint dppgaddr)
       return -1;
     }
   }
+  else if (dppgaddr < ph.vaddr + ph.memsz)
+  {
+    // in BSS
+    memset(mem, 0, PGSIZE);
+  }
   else
   {
     cprintf("out of file size\n");
+    return -1;
   }
 
   pte_t *pte = walkpgdir(curproc->pgdir, (void *)dppgaddr, 0);
   cprintf("Added into list index: %x MAX: %x PTE: %x\n", curproc->lru_list.sz, curproc->lru_list.max_sz, pte);
   curproc->lru_list.arr[curproc->lru_list.sz++] = pte;
   cprintf("Page loaded successfully at address %x\n", dppgaddr);
-  pte = walkpgdir(curproc->pgdir, (void *)0, 0);
-  int count = 0;
-  uint p = 0;
-  cprintf("PRESeNT : ");
-  while (p < 1024)
+  for (int i = 0; i < curproc->lru_list.sz; i++)
   {
-    if (*pte & PTE_P)
-    {
-      count++;
-      cprintf("%x ", pte);
-    }
-    p++;
-    pte = walkpgdir(curproc->pgdir, (void *)(p * 4096), 0);
-    ;
+
+    cprintf(" %x A:%d", curproc->lru_list.arr[i], PTE_GET_ACCESSED(*curproc->lru_list.arr[i]));
   }
-  cprintf("\nCOUNT: %d\n", count);
+  cprintf("\n");
 
   iunlockput(ip);
   end_op();

@@ -1,19 +1,27 @@
 #include "types.h"
 #include "user.h"
 
-char arr[8192 * 2];  // allocate 16KB on stack (default stack ~8KB)
+unsigned long randstate = 1;
+unsigned int
+rand()
+{
+    randstate = randstate * 1664525 + 1013904223;
+    return randstate;
+}
 
-int main(){
-    // char arr[8192 * 2];  // allocate 16KB on stack (default stack ~8KB)
-    arr[0] = 'x';        // touch the page
-    // memset(arr, '0', 8192*2);
-    for(int i= 0;i < 8192*2;i++){
-        arr[i] = 'x';
+char arr[8192 * 4];
+
+int main()
+{
+    arr[0] = 'x'; // touch the page
+    for (int i = 0; i < 8192 * 4; i++)
+    {
+        int random_index = rand() % (4096);
+        arr[random_index] = arr[i];
     }
     int sz = 0;
     printf(1, "HELLO");
-  
- 
+
     printf(1, "HELLO");
     exit();
 }

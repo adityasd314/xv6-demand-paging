@@ -1,5 +1,5 @@
 #define MAXFILESZ 71680
-#define LRU_MAX_SIZE 3
+#define LRU_MAX_SIZE 4
 #define LRU_MIN_SIZE 2
 
 // Per-CPU state
