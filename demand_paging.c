@@ -5,6 +5,7 @@
 #include "proc.h"
 #include "elf.h"
 #include "memlayout.h"
+#include "swap.h"
 void print_pte()
 {
   // prints the present pages
@@ -26,6 +27,31 @@ void print_pte()
   }
   cprintf("\nCOUNT: %d\n", count);
 }
+int load_swap_page(uint dppgaddr){
+  int free_page_index = get_free_page();
+  char *mem = kalloc();
+  if (mem == 0)
+  {
+    cprintf("allocuvm out of memory\n");
+    return -1;
+  }
+  memset(mem, 0, PGSIZE);
+  struct proc* curproc = myproc();
+    // Map the page into process address spac
+  if (mappages(curproc->pgdir, (char *)dppgaddr, PGSIZE, V2P(mem), PTE_W | PTE_U) < 0)
+  {
+    cprintf("mappages failed\n");
+    kfree(mem);
+    return -1;
+  }
+  // read from swap into memory
+  // i dont know this code for now !
+
+  // after it is loaded we have to insert a entry into our LRU_LIST
+
+  return -1;
+
+}
 int load_demand_page(uint dppgaddr)
 {
   struct proc *curproc = myproc();
@@ -37,6 +63,11 @@ int load_demand_page(uint dppgaddr)
   uint offset;
   int off, i;
   int found = 0; // Flag to check if we found the right program header
+  // Round down to page boundary
+  dppgaddr = PGROUNDDOWN(dppgaddr);
+  if(IS_MARK_AS_SWAPPED(dppgaddr)){
+    return load_swap_page(dppgaddr);
+  }
 
   if ((ip = namei(curproc->name)) == 0)
   {
@@ -62,8 +93,7 @@ int load_demand_page(uint dppgaddr)
     end_op();
     return -1;
   }
-  // Round down to page boundary
-  dppgaddr = PGROUNDDOWN(dppgaddr);
+  
   cprintf("PAGE FAULT AT ADDR %d", dppgaddr);
   if (curproc->lru_list.sz == curproc->lru_list.max_sz)
   {
@@ -74,17 +104,19 @@ int load_demand_page(uint dppgaddr)
     print_pte();
     for (int i = 0; i < curproc->lru_list.sz; i++)
     {
-
-      if (found == -1 && PTE_GET_ACCESSED(*curproc->lru_list.arr[i]) == 0)
+      if (found == -1)
       {
-        found = i;
-        addrFound = curproc->lru_list.arr[i];
+        if (PTE_GET_ACCESSED(*curproc->lru_list.arr[i]) == 0)
+        {
+          found = i;
+          addrFound = curproc->lru_list.arr[i];
+        }
+        *curproc->lru_list.arr[i] = PTE_RESET_ACCESSED(*curproc->lru_list.arr[i]);
       }
-      if (found != -1 && i + 1 < curproc->lru_list.sz)
+      else if (i + 1 < curproc->lru_list.sz)
       {
         curproc->lru_list.arr[i] = curproc->lru_list.arr[i + 1];
       }
-      *curproc->lru_list.arr[i] = PTE_RESET_ACCESSED(*curproc->lru_list.arr[i]);
     }
     curproc->lru_list.sz--;
 

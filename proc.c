@@ -6,7 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-
+#include "swap.h"
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -89,7 +89,7 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
   p->lru_list.sz = 0;
-  p->lru_list.max_sz = LRU_MAX_SIZE;
+  p->lru_list.max_sz = MAX_PAGES_PER_PROCESS;
 
   release(&ptable.lock);
 
@@ -143,6 +143,7 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
+  init_bitmap();
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");

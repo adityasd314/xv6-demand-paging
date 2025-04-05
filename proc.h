@@ -1,6 +1,6 @@
 #define MAXFILESZ 71680
-#define LRU_MAX_SIZE 4
-#define LRU_MIN_SIZE 2
+#define MAX_PAGES_PER_PROCESS 4 // this is excluding the guard+stack page
+#define MIN_PAGES_PER_PROCESS 2 // this is excluding the guard+stack page
 
 // Per-CPU state
 struct cpu {
@@ -41,7 +41,7 @@ enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 struct lru_list {
   uint max_sz;
   uint sz;
-  pde_t* arr[LRU_MAX_SIZE];
+  pde_t* arr[MAX_PAGES_PER_PROCESS];
 };
 
 // Per-process state

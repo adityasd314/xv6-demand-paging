@@ -100,10 +100,10 @@ exec(char *path, char **argv)
   curproc->sz = sz;
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
-  curproc->lru_list.max_sz = (totalfilesz*LRU_MAX_SIZE)/LRU_MAX_SIZE + 1;
-  if(curproc->lru_list.max_sz < LRU_MIN_SIZE) curproc->lru_list.max_sz = LRU_MIN_SIZE;
-  if(curproc->lru_list.max_sz > LRU_MAX_SIZE){
-    curproc->lru_list.max_sz = LRU_MAX_SIZE;
+  curproc->lru_list.max_sz = (totalfilesz*MAX_PAGES_PER_PROCESS)/MAX_PAGES_PER_PROCESS + 1;
+  if(curproc->lru_list.max_sz < MIN_PAGES_PER_PROCESS) curproc->lru_list.max_sz = MIN_PAGES_PER_PROCESS;
+  if(curproc->lru_list.max_sz > MAX_PAGES_PER_PROCESS){
+    curproc->lru_list.max_sz = MAX_PAGES_PER_PROCESS;
   }
   cprintf("pages: %d, filesz: %d\n", curproc->lru_list.max_sz, totalfilesz);
   switchuvm(curproc);

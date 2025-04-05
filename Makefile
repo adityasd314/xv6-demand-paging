@@ -28,6 +28,7 @@ OBJS = \
 	vectors.o\
 	vm.o\
 	demand_paging.o\
+	swap.o\
 
 # Cross-compiling (e.g., on Mac OS X)
 # TOOLPREFIX = i386-jos-elf
@@ -95,6 +96,9 @@ xv6.img: bootblock kernel
 	dd if=/dev/zero of=xv6.img count=10000
 	dd if=bootblock of=xv6.img conv=notrunc
 	dd if=kernel of=xv6.img seek=1 conv=notrunc
+
+swap.img:
+	dd if=/dev/zero of=swap.img count=1000
 
 xv6memfs.img: bootblock kernelmemfs
 	dd if=/dev/zero of=xv6memfs.img count=10000
@@ -192,7 +196,7 @@ fs.img: mkfs README $(UPROGS)
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*.o *.d *.asm *.sym vectors.S bootblock entryother \
-	initcode initcode.out kernel xv6.img fs.img kernelmemfs \
+	initcode initcode.out kernel xv6.img swap.img fs.img kernelmemfs \
 	xv6memfs.img mkfs .gdbinit \
 	$(UPROGS)
 
@@ -223,7 +227,7 @@ CPUS := 2
 endif
 QEMUOPTS = -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp $(CPUS) -m 512 $(QEMUEXTRA)
 
-qemu: fs.img xv6.img
+qemu: fs.img xv6.img swap.img
 	$(QEMU) -serial mon:stdio $(QEMUOPTS)
 
 qemu-memfs: xv6memfs.img
