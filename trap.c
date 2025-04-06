@@ -58,10 +58,12 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_IDE:
-    ideintr();
+    ideintr(0);
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_IDE+1:
+    ideintr(1);
+    lapiceoi();
     // Bochs generates spurious IDE1 interrupts.
     break;
   case T_IRQ0 + IRQ_KBD:
@@ -81,11 +83,11 @@ trap(struct trapframe *tf)
   case T_PGFLT:
     cprintf("Hello A page fault just occured !\n");
     cprintf("Ip: %x\nPRocess Name: %s\nProcess Id: %d\n CR2 Reg 0x%x", tf->eip, myproc()->name, myproc()->pid, rcr2());
-    if(rcr2() >= KERNBASE || rcr2() >= myproc()->sz) {
-      cprintf("Page fault on invalid address: %x\n", rcr2());
-      myproc()->killed = 1;
-      return;
-    }
+    // if(rcr2() >= KERNBASE || rcr2() >= myproc()->sz) {
+    //   cprintf("Page fault on invalid address: %x\n", rcr2());
+    //   myproc()->killed = 1;
+    //   return;
+    // }
     if(load_demand_page(rcr2()) != 0){
       panic("loading page failed\n");
     }

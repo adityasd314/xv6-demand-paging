@@ -10,17 +10,19 @@ uint bitmap[32] => now this can track 32*32 = 1024 pages
 when allocating a page we can get the leftmost set bit in O(1) time
 so we will linearly search the 32 entries and get the first free page
 */
-#define LEFTMOST_SET_BIT(x) (x & -x)
+#define RIGHTMOST_SET_BIT(x) (x & -x)
 #define EXTRACT_PTE_FLAGS(x) (x & 0x1FFF) // gets the last 12 bits (1 << 13) - 1
 #define IS_MARK_AS_SWAPPED(x) (x & (1 << 9))
 #define MARK_AS_SWAPPED(x) (x | (1 << 9)) 
-#define PTE_AS_SWAP (index, flags) ((uint)((index) << PTXSHIFT | (flags))) // contructrs address from page directory index, page table index and offset
+#define REMOVE_PRESENT_BIT(x) (x & ~PTE_P)
+#define GET_INDEX_FROM_SWAP(x) (x >> 12)
+#define PTE_AS_SWAP(index, flags) ((uint)((index) << PTXSHIFT | (flags))) // contructrs address from page directory index, page table index and offset
 
 extern uint bitmap[32];
-void init_bitmap(); // sets all to 111..
-int get_free_page(); // returns the first 1
-int set_page(int);
-int clear_page(int);
+void bitmap_init(); // sets all to 111..
+int bitmap_get_free_page(); // returns the first 1
+int bitmap_set_page(int);
+int bitmap_clear_page(int);
 
 // IDEA
 /*

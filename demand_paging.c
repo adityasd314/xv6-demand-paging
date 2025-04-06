@@ -27,17 +27,24 @@ void print_pte()
   }
   cprintf("\nCOUNT: %d\n", count);
 }
-int load_swap_page(uint dppgaddr){
-  int free_page_index = get_free_page();
+int load_swap_page(pte_t *pte, uint dppgaddr)
+{
+  evict_lru_page();
+  cprintf("Printing pte %x", *pte);
   char *mem = kalloc();
+  cprintf("Printing pte %x", *pte);
+
   if (mem == 0)
   {
     cprintf("allocuvm out of memory\n");
     return -1;
   }
   memset(mem, 0, PGSIZE);
-  struct proc* curproc = myproc();
-    // Map the page into process address spac
+  struct proc *curproc = myproc();
+  cprintf("Printing pte %x %x", pte, *pte);
+  uint index_to_load = (GET_INDEX_FROM_SWAP(*pte));
+
+  // Map the page into process address spac
   if (mappages(curproc->pgdir, (char *)dppgaddr, PGSIZE, V2P(mem), PTE_W | PTE_U) < 0)
   {
     cprintf("mappages failed\n");
@@ -45,56 +52,48 @@ int load_swap_page(uint dppgaddr){
     return -1;
   }
   // read from swap into memory
-  // i dont know this code for now !
+  // i know this code now :) !
+  bread_swap(index_to_load, dppgaddr);
+  cprintf("Added into list index: %x MAX: %x PTE: %x\n", curproc->lru_list.sz, curproc->lru_list.max_sz, pte);
+  curproc->lru_list.arr[curproc->lru_list.sz++] = pte;
+  cprintf("Page loaded successfully at address %x\n", dppgaddr);
+  for (int i = 0; i < curproc->lru_list.sz; i++)
+  {
 
-  // after it is loaded we have to insert a entry into our LRU_LIST
+    cprintf(" %x A:%d", curproc->lru_list.arr[i], PTE_GET_ACCESSED(*curproc->lru_list.arr[i]));
+  }
+  cprintf("\n");
 
-  return -1;
-
+  return 0;
 }
-int load_demand_page(uint dppgaddr)
+void save_into_swap(pte_t *pte)
 {
+  cprintf("Saving into swap : ");
+  int free_page_index = bitmap_get_free_page();
+  if ((*pte & PTE_P) != 0)
+  {
+    char *pa = PTE_ADDR(*pte);
+    uint flags = MARK_AS_SWAPPED(0);
+    if (pa == 0)
+      panic("kfree");
+    char *v = P2V(pa);
+    kfree(v);
+    bwrite_swap(free_page_index, v);
+    uint swap_entry = PTE_AS_SWAP(free_page_index, flags);
+    cprintf(" swap entry %x : %x free page %x: %x\n", pte, *pte, free_page_index, swap_entry);
+    *pte = swap_entry;
+    bitmap_set_page(free_page_index);
+    // *pte = PTE_AS_SWAP(free_page_index, flags);
+  }
+  else
+  {
+    *pte = 0;
+  }
+}
+
+void evict_lru_page(){
   struct proc *curproc = myproc();
-  begin_op();
-  struct elfhdr elf;
-  struct inode *ip;
-  struct proghdr ph;
-  char *mem;
-  uint offset;
-  int off, i;
-  int found = 0; // Flag to check if we found the right program header
-  // Round down to page boundary
-  dppgaddr = PGROUNDDOWN(dppgaddr);
-  if(IS_MARK_AS_SWAPPED(dppgaddr)){
-    return load_swap_page(dppgaddr);
-  }
 
-  if ((ip = namei(curproc->name)) == 0)
-  {
-    end_op();
-    cprintf("file not found\n");
-    return -1;
-  }
-  ilock(ip);
-
-  // Check ELF header
-  if (readi(ip, (char *)&elf, 0, sizeof(elf)) != sizeof(elf))
-  {
-    cprintf("readi elf header failed\n");
-    iunlockput(ip);
-    end_op();
-    return -1;
-  }
-
-  if (elf.magic != ELF_MAGIC)
-  {
-    cprintf("bad elf magic\n");
-    iunlockput(ip);
-    end_op();
-    return -1;
-  }
-  
-  cprintf("PAGE FAULT AT ADDR %d", dppgaddr);
   if (curproc->lru_list.sz == curproc->lru_list.max_sz)
   {
     // pte_t *pte;
@@ -126,26 +125,15 @@ int load_demand_page(uint dppgaddr)
       for (int i = 0; i < curproc->lru_list.sz; i++)
         curproc->lru_list.arr[i] = curproc->lru_list.arr[i + 1];
     }
-    cprintf("\nFound %d Removing page table entry : %x\n", found, pte);
+    cprintf("\nFound %d Removing page table entry : %x %x\n", found, pte, *pte);
     if (!pte)
     {
-      cprintf("Page not there !");
+      panic("Page not there !");
     }
     else
     {
-      if ((*pte & PTE_P) != 0)
-      {
-        char *pa = PTE_ADDR(*pte);
-        if (pa == 0)
-          panic("kfree");
-        char *v = P2V(pa);
-        kfree(v);
-        *pte = 0;
-      }
-      else
-      {
-        *pte = 0;
-      }
+      save_into_swap(pte);
+
       // curproc->lru_list.sz--;
       // cprintf("LIST : 0");
       // for (int i = 0; i < curproc->lru_list.sz; i++)
@@ -160,6 +148,56 @@ int load_demand_page(uint dppgaddr)
   //   cprintf("pages allocated: %d\n", curproc->lru_list.sz);
   // }
 
+}
+
+int load_demand_page(uint dppgaddr)
+{
+  struct proc *curproc = myproc();
+  begin_op();
+  struct elfhdr elf;
+  struct inode *ip;
+  struct proghdr ph;
+  char *mem;
+  uint offset;
+  int off, i;
+  int found = 0; // Flag to check if we found the right program header
+  // Round down to page boundary
+  dppgaddr = PGROUNDDOWN(dppgaddr);
+  pte_t *pte = new_walkpgdir(curproc->pgdir, dppgaddr);
+
+  if (IS_MARK_AS_SWAPPED(*pte))
+  {
+    cprintf("Found in swap !%x", *pte);
+    return load_swap_page(pte, dppgaddr);
+  }
+
+  if ((ip = namei(curproc->name)) == 0)
+  {
+    end_op();
+    cprintf("file not found\n");
+    return -1;
+  }
+  ilock(ip);
+
+  // Check ELF header
+  if (readi(ip, (char *)&elf, 0, sizeof(elf)) != sizeof(elf))
+  {
+    cprintf("readi elf header failed\n");
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+
+  if (elf.magic != ELF_MAGIC)
+  {
+    cprintf("bad elf magic\n");
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+
+  cprintf("PAGE FAULT AT ADDR %d", dppgaddr);
+  evict_lru_page();
   // Allocate memory for the page
   mem = kalloc();
   if (mem == 0)
@@ -214,7 +252,7 @@ int load_demand_page(uint dppgaddr)
 
   if (!found)
   {
-    cprintf("Address %x not found in any program segment\n", dppgaddr);
+    cprintf("Address %x not found in any program segment[PageEntry%x: %x]\n", dppgaddr, pte, *pte);
     kfree(mem);
     iunlockput(ip);
     end_op();
@@ -261,8 +299,9 @@ int load_demand_page(uint dppgaddr)
     cprintf("out of file size\n");
     return -1;
   }
+  iunlockput(ip);
+  end_op();
 
-  pte_t *pte = walkpgdir(curproc->pgdir, (void *)dppgaddr, 0);
   cprintf("Added into list index: %x MAX: %x PTE: %x\n", curproc->lru_list.sz, curproc->lru_list.max_sz, pte);
   curproc->lru_list.arr[curproc->lru_list.sz++] = pte;
   cprintf("Page loaded successfully at address %x\n", dppgaddr);
@@ -273,7 +312,5 @@ int load_demand_page(uint dppgaddr)
   }
   cprintf("\n");
 
-  iunlockput(ip);
-  end_op();
   return 0;
 }

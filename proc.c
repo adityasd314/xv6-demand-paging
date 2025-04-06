@@ -143,7 +143,7 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
-  init_bitmap();
+  bitmap_init();
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");

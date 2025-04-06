@@ -16,7 +16,7 @@ int main()
     arr[0] = 'x'; // touch the page
     for (int i = 0; i < 8192 * 4; i++)
     {
-        int random_index = rand() % (4096);
+        int random_index = rand() % (16096);
         arr[random_index] = arr[i];
     }
     int sz = 0;

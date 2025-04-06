@@ -80,7 +80,7 @@ bget(uint dev, uint blockno)
   // because log.c has modified it but not yet committed it.
   for(b = bcache.head.prev; b != &bcache.head; b = b->prev){
     if(b->refcnt == 0 && (b->flags & B_DIRTY) == 0) {
-      b->dev = dev;
+      b->dev = dev; 
       b->blockno = blockno;
       b->flags = 0;
       b->refcnt = 1;
@@ -105,6 +105,20 @@ bread(uint dev, uint blockno)
   return b;
 }
 
+// Read a page at index in swap
+void
+bread_swap(uint index, char* pa){
+  struct buf* b;
+  int first_block = index * BLOCKS_PER_PAGE;
+  for(int blockno = index * BLOCKS_PER_PAGE; blockno < (index + 1) * BLOCKS_PER_PAGE; blockno++){
+    b = bread(DEV_SWAP, blockno);
+    memmove(pa + ((blockno - first_block) * BSIZE) , b->data, BSIZE);
+    brelse(b);
+  }
+  return;
+}
+
+
 // Write b's contents to disk.  Must be locked.
 void
 bwrite(struct buf *b)
@@ -113,6 +127,29 @@ bwrite(struct buf *b)
     panic("bwrite");
   b->flags |= B_DIRTY;
   iderw(b);
+}
+
+// Write a page at index to swap
+void
+bwrite_swap(uint index, char* pa){
+  struct buf* b;
+  int first_block = index * BLOCKS_PER_PAGE;
+  for(int blockno = index * BLOCKS_PER_PAGE; blockno < (index + 1) * BLOCKS_PER_PAGE; blockno++){
+
+    cprintf("inside loop %d\n", blockno);
+
+    b = bget(DEV_SWAP, blockno);
+    cprintf("bget done%x %x\n",pa,  pa + ((blockno - first_block) * BSIZE));
+
+    memmove(b->data, pa + ((blockno - first_block) * BSIZE), BSIZE);
+    cprintf("bwrite init\n");
+
+    bwrite(b);
+    cprintf("bwrite done\n");
+
+    brelse(b);
+  }
+  return;
 }
 
 // Release a locked buffer.

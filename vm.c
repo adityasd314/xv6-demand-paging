@@ -28,7 +28,14 @@ seginit(void)
   c->gdt[SEG_UDATA] = SEG(STA_W, 0, 0xffffffff, DPL_USER);
   lgdt(c->gdt, sizeof(c->gdt));
 }
-
+pte_t* new_walkpgdir(pde_t *pgdir, uint va){
+  pde_t* pde;
+  pte_t* pgtab, pte;
+  pde = &pgdir[PDX(va)];
+  pgtab = (pte_t*)P2V(PTE_ADDR(*pde));// *pde denotes the actual PTE
+  pte = &pgtab[PTX(va)];
+  return pte;
+}
 // Return the address of the PTE in page table pgdir
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page table pages.
@@ -94,7 +101,7 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
     if((pte = walkpgdir(pgdir, a, 1)) == 0)
       return -1;
     if(*pte & PTE_P)
-      panic("remap");
+      panic("remap"); //Allow remapping for the swap entries
     *pte = pa | perm | PTE_P;
     if(a == last)
       break;
