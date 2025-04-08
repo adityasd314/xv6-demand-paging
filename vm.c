@@ -44,11 +44,9 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
   pde_t *pde;
   pte_t *pgtab;
-  // pgdir points to the bottom of page dir
-  pde = &pgdir[PDX(va)]; 
+  pde = &pgdir[PDX(va)];
   if(*pde & PTE_P){
-    pgtab = (pte_t*)P2V(PTE_ADDR(*pde));// *pde denotes the actual PTE
-    // this code gets the Physical page number converts to virtual addre
+    pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
   } else {
     if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)
       return 0;
@@ -59,7 +57,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
     // entries, if necessary.
     *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
   }
-  return &pgtab[PTX(va)]; // returns pointer to the PTE
+  return &pgtab[PTX(va)];
 }
 
 static int
@@ -87,8 +85,6 @@ newmappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
-// now we have memory allocated to us
-// we just need to make page table entries for the same
 int
 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 {
@@ -101,7 +97,7 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
     if((pte = walkpgdir(pgdir, a, 1)) == 0)
       return -1;
     if(*pte & PTE_P)
-      panic("remap"); //Allow remapping for the swap entries
+      panic("remap");
     *pte = pa | perm | PTE_P;
     if(a == last)
       break;

@@ -27,12 +27,11 @@ void print_pte()
   }
   cprintf("\nCOUNT: %d\n", count);
 }
+
 int load_swap_page(pte_t *pte, uint dppgaddr)
 {
-  evict_lru_page();
   cprintf("Printing pte %x", *pte);
   char *mem = kalloc();
-  cprintf("Printing pte %x", *pte);
 
   if (mem == 0)
   {
@@ -41,8 +40,8 @@ int load_swap_page(pte_t *pte, uint dppgaddr)
   }
   memset(mem, 0, PGSIZE);
   struct proc *curproc = myproc();
-  cprintf("Printing pte %x %x", pte, *pte);
   uint index_to_load = (GET_INDEX_FROM_SWAP(*pte));
+  cprintf("\nindex to read from: %d\n", index_to_load);
 
   // Map the page into process address spac
   if (mappages(curproc->pgdir, (char *)dppgaddr, PGSIZE, V2P(mem), PTE_W | PTE_U) < 0)
@@ -52,8 +51,7 @@ int load_swap_page(pte_t *pte, uint dppgaddr)
     return -1;
   }
   // read from swap into memory
-  // i know this code now :) !
-  bread_swap(index_to_load, dppgaddr);
+  bread_swap(index_to_load, V2P(mem));
   cprintf("Added into list index: %x MAX: %x PTE: %x\n", curproc->lru_list.sz, curproc->lru_list.max_sz, pte);
   curproc->lru_list.arr[curproc->lru_list.sz++] = pte;
   cprintf("Page loaded successfully at address %x\n", dppgaddr);
@@ -66,14 +64,17 @@ int load_swap_page(pte_t *pte, uint dppgaddr)
 
   return 0;
 }
+
 void save_into_swap(pte_t *pte)
 {
   cprintf("Saving into swap : ");
   int free_page_index = bitmap_get_free_page();
+  cprintf("\nindex to write to: %d\n", free_page_index);
   if ((*pte & PTE_P) != 0)
   {
+    cprintf("hello here\n");
     char *pa = PTE_ADDR(*pte);
-    uint flags = MARK_AS_SWAPPED(0);
+    uint flags = MARK_AS_SWAPPED(*pte);
     if (pa == 0)
       panic("kfree");
     char *v = P2V(pa);
@@ -83,7 +84,7 @@ void save_into_swap(pte_t *pte)
     cprintf(" swap entry %x : %x free page %x: %x\n", pte, *pte, free_page_index, swap_entry);
     *pte = swap_entry;
     bitmap_set_page(free_page_index);
-    // *pte = PTE_AS_SWAP(free_page_index, flags);
+    cprintf("hello here too\n");
   }
   else
   {
@@ -93,61 +94,44 @@ void save_into_swap(pte_t *pte)
 
 void evict_lru_page(){
   struct proc *curproc = myproc();
-
-  if (curproc->lru_list.sz == curproc->lru_list.max_sz)
+  // pte_t *pte;
+  uint a, pa;
+  int found = -1;
+  uint addrFound = 0;
+  print_pte();
+  for (int i = 0; i < curproc->lru_list.sz; i++)
   {
-    // pte_t *pte;
-    uint a, pa;
-    int found = -1;
-    uint addrFound = 0;
-    print_pte();
-    for (int i = 0; i < curproc->lru_list.sz; i++)
-    {
-      if (found == -1)
-      {
-        if (PTE_GET_ACCESSED(*curproc->lru_list.arr[i]) == 0)
-        {
-          found = i;
-          addrFound = curproc->lru_list.arr[i];
-        }
-        *curproc->lru_list.arr[i] = PTE_RESET_ACCESSED(*curproc->lru_list.arr[i]);
-      }
-      else if (i + 1 < curproc->lru_list.sz)
-      {
-        curproc->lru_list.arr[i] = curproc->lru_list.arr[i + 1];
-      }
-    }
-    curproc->lru_list.sz--;
-
-    pte_t *pte = (found == -1) ? curproc->lru_list.arr[0] : addrFound;
     if (found == -1)
     {
-      for (int i = 0; i < curproc->lru_list.sz; i++)
-        curproc->lru_list.arr[i] = curproc->lru_list.arr[i + 1];
+      if (PTE_GET_ACCESSED(*curproc->lru_list.arr[i]) == 0)
+      {
+        found = i;
+        addrFound = curproc->lru_list.arr[i];
+      }
+      *curproc->lru_list.arr[i] = PTE_RESET_ACCESSED(*curproc->lru_list.arr[i]);
     }
-    cprintf("\nFound %d Removing page table entry : %x %x\n", found, pte, *pte);
-    if (!pte)
+    if (found != -1 && i + 1 < curproc->lru_list.sz)
     {
-      panic("Page not there !");
-    }
-    else
-    {
-      save_into_swap(pte);
-
-      // curproc->lru_list.sz--;
-      // cprintf("LIST : 0");
-      // for (int i = 0; i < curproc->lru_list.sz; i++)
-      // {
-      //   curproc->lru_list.arr[i] = curproc->lru_list.arr[i + 1];
-      //   cprintf("%x A:%d ", curproc->lru_list.arr[i + 1], PTE_GET_ACCESSED(curproc->lru_list.arr[i + 1]));
-      // }
+      curproc->lru_list.arr[i] = curproc->lru_list.arr[i + 1];
     }
   }
-  // else{
-  //   curproc->lru_list.sz++;
-  //   cprintf("pages allocated: %d\n", curproc->lru_list.sz);
-  // }
+  curproc->lru_list.sz--;
 
+  pte_t *pte = (found == -1) ? curproc->lru_list.arr[0] : addrFound;
+  if (found == -1)
+  {
+    for (int i = 0; i < curproc->lru_list.sz; i++)
+      curproc->lru_list.arr[i] = curproc->lru_list.arr[i + 1];
+  }
+  cprintf("\nFound %d Removing page table entry : %x %x\n", found, pte, *pte);
+  if (!pte)
+  {
+    panic("Page not there !");
+  }
+  else
+  {
+    save_into_swap(pte);
+  }
 }
 
 int load_demand_page(uint dppgaddr)
@@ -164,6 +148,9 @@ int load_demand_page(uint dppgaddr)
   // Round down to page boundary
   dppgaddr = PGROUNDDOWN(dppgaddr);
   pte_t *pte = new_walkpgdir(curproc->pgdir, dppgaddr);
+
+  if (curproc->lru_list.sz == curproc->lru_list.max_sz)
+    evict_lru_page();
 
   if (IS_MARK_AS_SWAPPED(*pte))
   {
@@ -196,8 +183,6 @@ int load_demand_page(uint dppgaddr)
     return -1;
   }
 
-  cprintf("PAGE FAULT AT ADDR %d", dppgaddr);
-  evict_lru_page();
   // Allocate memory for the page
   mem = kalloc();
   if (mem == 0)

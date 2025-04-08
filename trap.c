@@ -46,7 +46,6 @@ trap(struct trapframe *tf)
     return;
   }
 
-  if(tf->trapno != 32 && tf->trapno != 36) cprintf("%d\n", tf->trapno);
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){
