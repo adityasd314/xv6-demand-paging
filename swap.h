@@ -17,12 +17,13 @@ so we will linearly search the 32 entries and get the first free page
 #define REMOVE_PRESENT_BIT(x) (x & ~PTE_P)
 #define GET_INDEX_FROM_SWAP(x) (x >> 12)
 #define PTE_AS_SWAP(index, flags) ((uint)((index) << PTXSHIFT | (flags))) // contructrs address from page directory index, page table index and offset
+#define BITMAP_SIZE 16
 
-extern uint bitmap[32];
+extern uint bitmap[BITMAP_SIZE];
 void bitmap_init(); // sets all to 111..
 int bitmap_get_free_page(); // returns the first 1
-int bitmap_set_page(int);
-int bitmap_clear_page(int);
+int bitmap_alloc_page(int);
+int bitmap_dealloc_page(int);
 
 // IDEA
 /*

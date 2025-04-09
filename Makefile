@@ -98,7 +98,7 @@ xv6.img: bootblock kernel
 	dd if=kernel of=xv6.img seek=1 conv=notrunc
 
 swap.img:
-	dd if=/dev/zero of=swap.img count=1000
+	dd if=/dev/zero of=swap.img count=4096
 
 xv6memfs.img: bootblock kernelmemfs
 	dd if=/dev/zero of=xv6memfs.img count=10000

@@ -24,7 +24,6 @@
 #define IDE_CMD_RDMUL 0xc4
 #define IDE_CMD_WRMUL 0xc5
 
-// some macros for better readability
 #define DISK1_PORT_NO 0x1f0
 #define SWAPDISK_PORT_NO 0x170
 #define PRIMARY_IDE_CONTROL_PORT 0x3f6

@@ -74,7 +74,7 @@ void save_into_swap(pte_t *pte)
   {
     cprintf("hello here\n");
     char *pa = PTE_ADDR(*pte);
-    uint flags = MARK_AS_SWAPPED(*pte);
+    uint flags = (MARK_AS_SWAPPED(EXTRACT_PTE_FLAGS(*pte))) & ~PTE_P;
     if (pa == 0)
       panic("kfree");
     char *v = P2V(pa);
@@ -83,7 +83,7 @@ void save_into_swap(pte_t *pte)
     uint swap_entry = PTE_AS_SWAP(free_page_index, flags);
     cprintf(" swap entry %x : %x free page %x: %x\n", pte, *pte, free_page_index, swap_entry);
     *pte = swap_entry;
-    bitmap_set_page(free_page_index);
+    bitmap_alloc_page(free_page_index);
     cprintf("hello here too\n");
   }
   else
